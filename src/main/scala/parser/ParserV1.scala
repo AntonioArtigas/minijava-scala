@@ -102,15 +102,6 @@ class ParserV1(val tokens: List[Token]) extends Parser {
     throw error(peek(), message)
   }
 
-  // private def consumeIdent(name: String, message: String): Token = {
-  //   val tok = consume(TokenType.IDENTIFIER, message)
-  //   if (tok.lexeme == name) {
-  //     error(peek(), message)
-  //   }
-
-  //   return tok
-  // }
-
   // If one of the tokens types is matched against the next one, advance by one and return true, otherwise false
   private def isMatch(types: TokenType*): Boolean = returning {
     // NOTE: Scala for-loops are weird. Need to use this throwReturn function to exit early
@@ -148,21 +139,6 @@ class ParserV1(val tokens: List[Token]) extends Parser {
     val expr = expression()
     consume(TokenType.RIGHT_PAREN, "Expect ')' after expression.")
     Expr.Grouping(expr)
-  }
-
-  // NOTE: Unused
-  private def call(left: Expr, token: Token): Expr = {
-    val args = ListBuffer[Expr]()
-    if (!check(TokenType.RIGHT_PAREN)) {
-      while {
-        val expr = expression()
-        args.addOne(expr)
-
-        isMatch(TokenType.COMMA)
-      } do ()
-    }
-
-    Expr.Call(left, token, args.toList)
   }
 
   private def unary(token: Token): Expr = {
