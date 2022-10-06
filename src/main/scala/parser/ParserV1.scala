@@ -197,7 +197,7 @@ class ParserV1(val tokens: List[Token]) extends Parser {
 
       Expr.Call(left, name, args.toList)
     } else {
-      ???
+      throw error(name, "Field access is not allowed.")
     }
   }
 
