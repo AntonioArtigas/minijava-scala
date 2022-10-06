@@ -1,0 +1,11 @@
+class Types {
+    public static void main(String[] args) {
+    }
+}
+
+class BunchOfTypes {
+    int number;
+    boolean whatsABoolean;
+    int[] arrMeMateys;
+    Custom type;
+}

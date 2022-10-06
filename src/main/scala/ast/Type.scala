@@ -1,9 +1,15 @@
+package minijava
 package ast
 
-sealed class Type {
-  case class Int() extends Type
-  case class IntArray() extends Type
-  case class Bool() extends Type
-  case class String() extends Type
+sealed trait Type
+
+/**
+ * Represents a type within the AST
+ */
+object Type {
+  case object Int extends Type
+  case object IntArray extends Type
+  case object Bool extends Type
+  case object Void extends Type
   case class Custom(name: String) extends Type
 }

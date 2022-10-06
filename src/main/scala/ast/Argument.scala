@@ -3,4 +3,4 @@ package ast
 
 import tokenizer.Token
 
-case class Argument(typ: Token, name: Token)
+case class Argument(typ: Type, name: Token)

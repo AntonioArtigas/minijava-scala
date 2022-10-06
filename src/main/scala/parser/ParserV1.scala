@@ -5,8 +5,7 @@ import scala.util.control.NonLocalReturns.*
 import scala.util.control.Breaks.*
 import scala.annotation.unused
 import scala.collection.mutable.ListBuffer
-
-import ast.{Argument, BinaryOp, Expr, Precedence, Program, Stmt, UnaryOp}
+import ast.{Argument, BinaryOp, Expr, Precedence, Program, Stmt, Type, UnaryOp}
 import tokenizer.{Token, TokenType}
 
 // TODO: Parse types into type objects instead of tokens
@@ -265,7 +264,7 @@ class ParserV1(val tokens: List[Token]) extends Parser {
   }
 
   private def method(): Stmt.Method = {
-    val returnType = consume(TokenType.IDENTIFIER, "Expect type for method.")
+    val returnType = parseType()
     val methodName = consume(TokenType.IDENTIFIER, "Expect method name.")
 
     consume(TokenType.LEFT_PAREN, "Expect '(' after method name.")
@@ -274,7 +273,7 @@ class ParserV1(val tokens: List[Token]) extends Parser {
       // NOTE: do-while looks a little weird, read link below
       // https://docs.scala-lang.org/scala3/reference/dropped-features/do-while.html
       while {
-        val argType = consume(TokenType.IDENTIFIER, "Expect type for argument.")
+        val argType = parseType()
         val argName = consume(TokenType.IDENTIFIER, "Expect argument name.")
         args.addOne(Argument(argType, argName))
 
@@ -289,12 +288,29 @@ class ParserV1(val tokens: List[Token]) extends Parser {
     Stmt.Method(returnType, methodName, args.toList, Stmt.Block(block()))
   }
 
-  // TODO: Parse array types
-  private def property(): Stmt.Property = {
-    val typ = consume(TokenType.IDENTIFIER, "Expect type for property.")
+  private def parseType(): Type = {
+    val typeName = consume(TokenType.IDENTIFIER, "Expect type for property.")
     if (isMatch(TokenType.LEFT_BRACKET)) {
       consume(TokenType.RIGHT_BRACKET, "Expect ']' after '['.")
+
+      if (typeName.lexeme != "int") {
+        throw error(typeName, "Only arrays of type `int` are allowed.")
+      }
+
+      Type.IntArray
+    } else {
+      typeName.lexeme match {
+        case "int" => Type.Int
+        case "boolean" => Type.Bool
+//        case "void" => Type.Void
+        case _ => Type.Custom(typeName.lexeme)
+      }
     }
+  }
+
+  // TODO: Parse array types
+  private def property(): Stmt.Property = {
+    val propertyType = parseType()
     val name = consume(TokenType.IDENTIFIER, "Expect property name.")
     val assigned = if (isMatch(TokenType.SEMICOLON)) {
       None
@@ -304,7 +320,7 @@ class ParserV1(val tokens: List[Token]) extends Parser {
       consume(TokenType.SEMICOLON, "Expect ';' after expression.")
       Some(expr)
     }
-    Stmt.Property(typ, name, assigned)
+    Stmt.Property(propertyType, name, assigned)
   }
 
   private def classDefinition(): Stmt.Class = {
@@ -376,9 +392,9 @@ class ParserV1(val tokens: List[Token]) extends Parser {
   }
 
   def assignStatement(): Stmt = {
-    val name = previous()
+    val nameOrType = previous()
 
-    if (name.lexeme == "System") {
+    if (nameOrType.lexeme == "System") {
       consume(TokenType.PERIOD, "Expect '.' after 'System'.")
       val out = consume(TokenType.IDENTIFIER, "Expect 'out' after 'System.'.")
       if (out.lexeme != "out") {
@@ -402,7 +418,7 @@ class ParserV1(val tokens: List[Token]) extends Parser {
     if (isMatch(TokenType.EQUAL)) {
       val expr = expression()
       consume(TokenType.SEMICOLON, "Expect ';' after expression.")
-      return Stmt.Assign(name, expr)
+      return Stmt.Assign(nameOrType, expr)
     }
 
     if (isMatch(TokenType.LEFT_BRACKET)) {
@@ -412,23 +428,7 @@ class ParserV1(val tokens: List[Token]) extends Parser {
       val value = expression()
       consume(TokenType.SEMICOLON, "Expect ';' after expression.")
 
-      return Stmt.IndexSet(name, index, value)
-    }
-
-    if (isMatch(TokenType.IDENTIFIER)) {
-      val name = previous()
-
-      val assign = if (isMatch(TokenType.EQUAL)) {
-        val expr = expression()
-        consume(TokenType.SEMICOLON, "Expect ';' after expression.")
-        Some(expr)
-      } else if (isMatch(TokenType.SEMICOLON)) {
-        None
-      } else {
-        throw error(peek(), "Expect assignment or semicolon after variable declaration.")
-      }
-
-      return Stmt.Var(name, assign)
+      return Stmt.IndexSet(nameOrType, index, value)
     }
 
     throw error(peek(), "Not a statement.")
@@ -457,7 +457,7 @@ class ParserV1(val tokens: List[Token]) extends Parser {
       return returnStatement()
     }
 
-    // 3 cases: Assign variable, assign to index on array, or System.out.println
+    // 4 cases here: println, variable assign, array assign, or variable declaration (w/ optional assign)
     if (isMatch(TokenType.IDENTIFIER)) {
       return assignStatement()
     }

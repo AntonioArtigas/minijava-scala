@@ -18,14 +18,12 @@ object Stmt {
 
   case class MainClass(name: Token, body: MainMethod) extends Stmt
 
-  case class Var(name: Token, assigned: Option[Expr]) extends Stmt
-
-  case class Method(typ: Token, name: Token, arguments: List[Any] = List.empty, body: Block)
+  case class Method(typ: Type, name: Token, arguments: List[Any] = List.empty, body: Block)
       extends Stmt
 
   case class MainMethod(argName: Token, body: Block) extends Stmt
 
-  case class Property(typ: Token, name: Token, assigned: Option[Expr] = None) extends Stmt
+  case class Property(typ: Type, name: Token, assigned: Option[Expr] = None) extends Stmt
 
   // Other
   // { <stmt>* }
