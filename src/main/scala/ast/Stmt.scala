@@ -18,7 +18,7 @@ object Stmt {
 
   case class MainClass(name: Token, body: MainMethod) extends Stmt
 
-  case class Method(typ: Type, name: Token, arguments: List[Any] = List.empty, body: Block)
+  case class Method(returnType: Type, name: Token, arguments: List[Argument] = List.empty, body: Block)
       extends Stmt
 
   case class MainMethod(argName: Token, body: Block) extends Stmt
