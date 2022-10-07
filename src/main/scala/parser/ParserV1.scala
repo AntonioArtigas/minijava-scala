@@ -8,7 +8,6 @@ import scala.collection.mutable.ListBuffer
 import ast.{Argument, BinaryOp, Expr, Precedence, Program, Stmt, Type, UnaryOp}
 import tokenizer.{Token, TokenType}
 
-// TODO: Parse types into type objects instead of tokens
 // NOTE: When parsing method bodies, if an error occurs, we sync to a new class declaration and start re-parsing at the class level
 /** First implementation of parser Recursive descent parser that uses pratt parsing to parse
   * expressions.
@@ -302,13 +301,11 @@ class ParserV1(val tokens: List[Token]) extends Parser {
       typeName.lexeme match {
         case "int" => Type.Int
         case "boolean" => Type.Bool
-//        case "void" => Type.Void
         case _ => Type.Custom(typeName.lexeme)
       }
     }
   }
 
-  // TODO: Parse array types
   private def property(): Stmt.Property = {
     val propertyType = parseType()
     val name = consume(TokenType.IDENTIFIER, "Expect property name.")
