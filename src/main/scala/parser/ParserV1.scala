@@ -299,9 +299,9 @@ class ParserV1(val tokens: List[Token]) extends Parser {
       Type.IntArray
     } else {
       typeName.lexeme match {
-        case "int" => Type.Int
+        case "int"     => Type.Int
         case "boolean" => Type.Bool
-        case _ => Type.Custom(typeName.lexeme)
+        case _         => Type.Custom(typeName.lexeme)
       }
     }
   }
@@ -419,6 +419,17 @@ class ParserV1(val tokens: List[Token]) extends Parser {
     }
 
     if (isMatch(TokenType.LEFT_BRACKET)) {
+      // FIXME: hack around parsing an index set OR var decl of type array
+
+      if (peek().typ == TokenType.RIGHT_BRACE) {
+        if (nameOrType.lexeme != "int") {
+          throw error(nameOrType, "Only arrays of type `int` are allowed.")
+        }
+
+        val name = consume(TokenType.IDENTIFIER, "Expected name for variable")
+        return Stmt.Property(Type.IntArray, name)
+      }
+
       val index = expression()
       consume(TokenType.RIGHT_BRACKET, "Expect ']' after index.")
       consume(TokenType.EQUAL, "Expect '=' after array index.")
@@ -426,6 +437,13 @@ class ParserV1(val tokens: List[Token]) extends Parser {
       consume(TokenType.SEMICOLON, "Expect ';' after expression.")
 
       return Stmt.IndexSet(nameOrType, index, value)
+    }
+
+    if (isMatch(TokenType.IDENTIFIER)) {
+      val name = previous()
+      consume(TokenType.SEMICOLON, "Expect ';' after declaration.")
+
+      return Stmt.Property(Type.fromString(nameOrType.lexeme), name)
     }
 
     throw error(peek(), "Not a statement.")
