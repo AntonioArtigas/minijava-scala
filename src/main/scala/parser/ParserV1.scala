@@ -38,6 +38,7 @@ class ParserV1(val tokens: List[Token]) extends Parser {
     TokenType.BANG -> ParseRule(unary, null, Precedence.UNARY),
     TokenType.AND -> ParseRule(null, binary, Precedence.AND),
     TokenType.IDENTIFIER -> ParseRule(variable, null, Precedence.NONE),
+    TokenType.THIS -> ParseRule(_this, null, Precedence.NONE),
     TokenType.INTEGER -> ParseRule(number, null, Precedence.NONE),
     TokenType.TRUE -> ParseRule(bool, null, Precedence.NONE),
     TokenType.FALSE -> ParseRule(bool, null, Precedence.NONE)
@@ -150,6 +151,7 @@ class ParserV1(val tokens: List[Token]) extends Parser {
   private def number(token: Token): Expr = Expr.Integer(token, token.lexeme.toInt)
   private def bool(token: Token): Expr = Expr.Bool(token, token.lexeme.toBoolean)
   private def variable(token: Token): Expr = Expr.Variable(token)
+  private def _this(token: Token): Expr = Expr.This(token)
 
   private def dot(left: Expr, token: Token): Expr = {
     val name = consume(TokenType.IDENTIFIER, "Expect identifier after '.'.")

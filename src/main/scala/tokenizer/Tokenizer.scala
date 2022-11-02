@@ -17,6 +17,7 @@ object Tokenizer {
     "false" -> TokenType.FALSE,
     "new" -> TokenType.NEW,
     "return" -> TokenType.RETURN,
+    "this" -> TokenType.THIS
   ).withDefaultValue(TokenType.IDENTIFIER) // if the string given is not in the map, it's an identifier
 }
 

@@ -48,6 +48,7 @@ enum TokenType {
   IDENTIFIER,
   STRING,
   INTEGER,
+  THIS,
 
   // Special
   PRINT,
