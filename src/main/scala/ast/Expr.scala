@@ -26,17 +26,17 @@ object Expr {
   }
 
   // foo <op> bar
-  case class Binary(left: Expr, op: BinaryOp, right: Expr) extends Expr {
+  case class Binary(left: Expr, op: Token, opKind: BinaryOp, right: Expr) extends Expr {
     override def accept[R](visitor: Visitor[R]): R = visitor.visitBinary(this)
   }
 
   // foo[<expr>]
-  case class IndexGet(obj: Expr, index: Expr) extends Expr {
+  case class IndexGet(name: Token, obj: Expr, index: Expr) extends Expr {
     override def accept[R](visitor: Visitor[R]): R = visitor.visitIndexGet(this)
   }
 
   // foo.length
-  case class GetLength(obj: Expr) extends Expr {
+  case class GetLength(name: Token, obj: Expr) extends Expr {
     override def accept[R](visitor: Visitor[R]): R = visitor.visitGetLength(this)
   }
 
@@ -46,14 +46,14 @@ object Expr {
   }
 
   // 123, true, false
-  case class Integer(value: Int) extends Expr {
+  case class Integer(literal: Token, value: Int) extends Expr {
     override def accept[R](visitor: Visitor[R]): R = visitor.visitInteger(this)
   }
-  case class Bool(value: Boolean) extends Expr {
+  case class Bool(literal: Token, value: Boolean) extends Expr {
     override def accept[R](visitor: Visitor[R]): R = visitor.visitBool(this)
   }
   // bonus: "foo"?
-  case class String(value: String) extends Expr {
+  case class String(literal: Token, value: String) extends Expr {
     override def accept[R](visitor: Visitor[R]): R = ???
   }
 
@@ -79,7 +79,7 @@ object Expr {
   }
 
   // <op>foo, !foo, -foo
-  case class Unary(op: UnaryOp, left: Expr) extends Expr {
+  case class Unary(op: Token, opKind: UnaryOp, left: Expr) extends Expr {
     override def accept[R](visitor: Visitor[R]): R = visitor.visitUnary(this)
   }
 

@@ -140,22 +140,22 @@ class ParserV1(val tokens: List[Token]) extends Parser {
   }
 
   private def unary(token: Token): Expr = {
-    Expr.Unary(UnaryOp.fromTokenType(token.typ), expression())
+    Expr.Unary(token, UnaryOp.fromTokenType(token.typ), expression())
   }
 
   private def binary(left: Expr, token: Token): Expr = {
-    Expr.Binary(left, BinaryOp.fromTokenType(token.typ), expression())
+    Expr.Binary(left, token, BinaryOp.fromTokenType(token.typ), expression())
   }
 
-  private def number(token: Token): Expr = Expr.Integer(token.lexeme.toInt)
-  private def bool(token: Token): Expr = Expr.Bool(token.lexeme.toBoolean)
+  private def number(token: Token): Expr = Expr.Integer(token, token.lexeme.toInt)
+  private def bool(token: Token): Expr = Expr.Bool(token, token.lexeme.toBoolean)
   private def variable(token: Token): Expr = Expr.Variable(token)
 
   private def dot(left: Expr, token: Token): Expr = {
     val name = consume(TokenType.IDENTIFIER, "Expect identifier after '.'.")
 
     if (name.lexeme == "length") {
-      Expr.GetLength(left)
+      Expr.GetLength(token, left)
     } else if (isMatch(TokenType.LEFT_PAREN)) {
       val args = ListBuffer[Expr]()
       if (!check(TokenType.RIGHT_PAREN)) {
@@ -178,7 +178,7 @@ class ParserV1(val tokens: List[Token]) extends Parser {
   private def indexGet(left: Expr, token: Token): Expr = {
     val index = expression()
     consume(TokenType.RIGHT_BRACKET, "Expect ']' after index")
-    Expr.IndexGet(left, index)
+    Expr.IndexGet(token, left, index)
   }
 
   private def instance(@unused token: Token): Expr = {
@@ -356,6 +356,7 @@ class ParserV1(val tokens: List[Token]) extends Parser {
   }
 
   def ifStatement(): Stmt = {
+    val keyword = previous()
     consume(TokenType.LEFT_PAREN, "Expect '(' after if.")
     val condition = expression()
     consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.")
@@ -369,23 +370,24 @@ class ParserV1(val tokens: List[Token]) extends Parser {
       None
     }
 
-    Stmt.If(condition, ifBody, elseBody)
+    Stmt.If(keyword, condition, ifBody, elseBody)
   }
 
   def whileStatement(): Stmt = {
+    val keyword = previous()
     consume(TokenType.LEFT_PAREN, "Expect '(' after while.")
     val condition = expression()
     consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.")
     val body = statement()
 
-    Stmt.While(condition, body)
+    Stmt.While(keyword, condition, body)
   }
 
   def printStatement(): Stmt = {
-    consume(TokenType.LEFT_PAREN, "Expect '(' after print.")
+    val start = consume(TokenType.LEFT_PAREN, "Expect '(' after print.")
     val expr = expression()
     consume(TokenType.RIGHT_PAREN, "Expect ')' after print.")
-    Stmt.Print(expr)
+    Stmt.Print(start, expr)
   }
 
   def assignStatement(): Stmt = {
@@ -409,7 +411,7 @@ class ParserV1(val tokens: List[Token]) extends Parser {
       consume(TokenType.RIGHT_PAREN, "Expect ')' after expression.")
       consume(TokenType.SEMICOLON, "Expect ';' after statement.")
 
-      return Stmt.Print(toPrint)
+      return Stmt.Print(nameOrType, toPrint)
     }
 
     if (isMatch(TokenType.EQUAL)) {
@@ -450,9 +452,10 @@ class ParserV1(val tokens: List[Token]) extends Parser {
   }
 
   private def returnStatement(): Stmt = {
+    val keyword = previous()
     val expr = expression()
     consume(TokenType.SEMICOLON, "Expect ';' after expression.")
-    Stmt.Return(expr)
+    Stmt.Return(keyword, expr)
   }
 
   private def statement(): Stmt = {

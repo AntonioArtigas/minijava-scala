@@ -69,6 +69,7 @@ object Stmt {
 
   // if (<cond>) <stmt>
   case class If(
+      keyword: Token,
       condition: Expr,
       thenBranch: Stmt,
       elseBranch: Option[Stmt] = None
@@ -77,12 +78,12 @@ object Stmt {
   }
 
   // while (<condition>) <stmt>
-  case class While(condition: Expr, body: Stmt) extends Stmt {
+  case class While(keyword: Token, condition: Expr, body: Stmt) extends Stmt {
     override def accept[R](visitor: Visitor[R]): R = visitor.visitWhile(this)
   }
 
   // System.out.println(<expr>)
-  case class Print(expression: Expr) extends Stmt {
+  case class Print(start: Token, expression: Expr) extends Stmt {
     override def accept[R](visitor: Visitor[R]): R = visitor.visitPrint(this)
   }
 
@@ -91,7 +92,7 @@ object Stmt {
     override def accept[R](visitor: Visitor[R]): R = visitor.visitIndexSet(this)
   }
 
-  case class Return(expr: Expr) extends Stmt {
+  case class Return(keyword: Token, expr: Expr) extends Stmt {
     override def accept[R](visitor: Visitor[R]): R = visitor.visitReturn(this)
   }
 }
