@@ -203,7 +203,7 @@ class ParserV1(val tokens: List[Token]) extends Parser {
       Expr.NewInstance(typ, args.toList)
     } else if (isMatch(TokenType.LEFT_BRACKET)) {
       val countExpr = expression()
-      println(s"NewArray of type $typ with $countExpr")
+      println(s"NewArray of type ${typ.lexeme} with $countExpr")
 
       consume(TokenType.RIGHT_BRACKET, "Expect '['] after index expression.")
 
@@ -425,12 +425,13 @@ class ParserV1(val tokens: List[Token]) extends Parser {
     if (isMatch(TokenType.LEFT_BRACKET)) {
       // FIXME: hack around parsing an index set OR var decl of type array
 
-      if (peek().typ == TokenType.RIGHT_BRACE) {
+      if (isMatch(TokenType.RIGHT_BRACKET)) {
         if (nameOrType.lexeme != "int") {
           throw error(nameOrType, "Only arrays of type `int` are allowed.")
         }
 
-        val name = consume(TokenType.IDENTIFIER, "Expected name for variable")
+        val name = consume(TokenType.IDENTIFIER, "Expected name for variable.")
+        consume(TokenType.SEMICOLON, "Expect ';' after name.")
         return Stmt.Property(Type.IntArray, name)
       }
 
