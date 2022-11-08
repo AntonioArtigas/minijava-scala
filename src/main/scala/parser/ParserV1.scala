@@ -198,8 +198,6 @@ class ParserV1(val tokens: List[Token]) extends Parser {
       }
 
       consume(TokenType.RIGHT_PAREN, "Expect ')' after argument list.")
-
-      println(s"NewInstance created for type $typ")
       Expr.NewInstance(typ, args.toList)
     } else if (isMatch(TokenType.LEFT_BRACKET)) {
       val countExpr = expression()
