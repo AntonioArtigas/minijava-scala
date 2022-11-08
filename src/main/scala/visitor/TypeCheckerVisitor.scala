@@ -446,8 +446,6 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
   }
 
   def typecheckProgram(program: Program): Unit = {
-    // TODO: Sanity checks before hand
-
     for (cls <- program.classes) {
       cls.accept(this)
     }
