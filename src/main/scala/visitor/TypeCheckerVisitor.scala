@@ -205,8 +205,18 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
 
     op match
       // Int only operations
-      case BinaryOp.DASH | BinaryOp.PLUS | BinaryOp.MUL | BinaryOp.LESS_EQUAL | BinaryOp.LESS_THAN |
-          BinaryOp.GREATER_THAN | BinaryOp.GREATER_EQUAL =>
+      case BinaryOp.DASH | BinaryOp.PLUS | BinaryOp.MUL =>
+        val leftIsInt = leftType.coerce(TypeInfo.Int, typeTable)
+        val rightIsInt = rightType.coerce(TypeInfo.Int, typeTable)
+
+        if (!(leftIsInt.isDefined && rightIsInt.isDefined)) {
+          errorOperatorTypesWrong(expr.op, expr.opKind, leftType, rightType)
+        } else {
+          TypeInfo.Int
+        }
+
+      case BinaryOp.LESS_EQUAL | BinaryOp.LESS_THAN | BinaryOp.GREATER_THAN |
+          BinaryOp.GREATER_EQUAL =>
         val leftIsInt = leftType.coerce(TypeInfo.Int, typeTable)
         val rightIsInt = rightType.coerce(TypeInfo.Int, typeTable)
 
@@ -247,7 +257,6 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
     }
   }
 
-  // TODO: Finish implementing calls
   override def visitCall(expr: Expr.Call): TypeInfo = {
     val objType = expr.calle.accept(this)
 
@@ -255,9 +264,12 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
       case c: ClassType =>
         val argTypes = expr.args.map(_.accept(this))
 
-        getMatchingMethod(c, expr.name.lexeme, argTypes)
-
-        ???
+        val matchedMethod = getMatchingMethod(c, expr.name.lexeme, argTypes)
+        if (matchedMethod.isDefined) {
+          typeTable.get(matchedMethod.get.returnType).get
+        } else {
+          TypeInfo.Unknown
+        }
       case TypeInfo.Unknown => TypeInfo.Unknown
       case _                => errorNotAnObject(objType, expr.name)
   }
