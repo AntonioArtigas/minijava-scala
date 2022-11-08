@@ -48,8 +48,16 @@ sealed trait TypeInfo {
       case TypeInfo.Void                                         => true
       case TypeInfo.Unknown                                      => false
       case TypeInfo.ClassType(name, parent, properties, methods) => false
-
   }
+
+  override def toString(): String = this match
+    case TypeInfo.Bool => "boolean"
+    case TypeInfo.Int => "int"
+    case TypeInfo.IntArray => "int[]"
+    case TypeInfo.Void => "void"
+    case TypeInfo.Unknown => "unknown"
+    case TypeInfo.ClassType(name, parent, properties, methods) => name.lexeme
+
 }
 
 object TypeInfo {

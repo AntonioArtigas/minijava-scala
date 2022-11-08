@@ -16,6 +16,7 @@ import minijava.tokenizer.Token
 
 import scala.collection.mutable
 import minijava.ast.BinaryOp
+import minijava.ast.Stmt.Return
 
 /** Pass over the types listed in the type table and check statements for correct types.
   *
@@ -26,36 +27,38 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
     extends Stmt.Visitor[TypeInfo]
     with Expr.Visitor[TypeInfo] {
 
-  private val typeErrors = ListBuffer[String]()
-
   private val variableScopes = mutable.Stack[mutable.HashMap[String, Option[TypeInfo]]]()
 
-  private var currentClass: Option[TypeInfo.ClassType] = None
-  private var currentMethod: Option[MethodDeclaration] = None
+  private var currentClass: Option[Stmt.Class] = None
+  private var currentMethod: Option[Stmt.Method] = None
   private var foundReturn = false
 
   // TODO: Finish implementing
   override def visitClass(stmt: Stmt.Class): TypeInfo = {
-    println(s"Class ${stmt.name.lexeme} extends ${stmt.parentClass.map(_.toString)}")
+    // println(s"Class ${stmt.name.lexeme} extends ${stmt.parentClass.map(_.toString)}")
 
     // Has to be in there, or else we have bigger problems
-    currentClass = typeTable.get(stmt.name.lexeme).map(_.asInstanceOf[TypeInfo.ClassType])
+    // currentClass = typeTable.get(stmt.name.lexeme).map(_.asInstanceOf[TypeInfo.ClassType])
+    currentClass = Some(stmt)
 
     beginScope()
 
+    val classType = typeTable.getOrElse(stmt.name.lexeme, TypeInfo.Unknown)
+
     // Put this into scope
-    variableScopes.head.put("this", Some(currentClass.get))
+    variableScopes.head.put("this", Some(classType))
 
     // load class properties
     for (prop <- currentClass.get.properties) {
       val propertyType =
-        typeTable.getOrElse(prop.typ.toString, errorTypeNotFound(prop.typ, prop.name.line))
+        typeTable.getOrElse(prop.typ.toString, errorTypeNotFound(prop.typ.toString, prop.name.line))
 
       declare(prop.name)
       define(prop.name, propertyType)
     }
 
     for (meth <- stmt.methods) {
+      currentMethod = Some(meth)
       meth.accept(this)
     }
 
@@ -69,6 +72,11 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
   }
 
   override def visitMethod(stmt: Stmt.Method): TypeInfo = {
+    val expectedReturnType = typeTable.get(stmt.returnType.toString)
+    if (expectedReturnType.isEmpty) {
+      errorTypeNotFound(stmt.returnType.toString, stmt.name.line)
+    }
+
     // Check if types in args exist
     for (arg <- stmt.arguments) {
       val typeName = arg.typ.toString
@@ -88,8 +96,22 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
       define(awt._2, awt._1)
     }
 
-    for (stmt <- stmt.body.statements) {
-      stmt.accept(this)
+    for (s <- stmt.body.statements) {
+      s.accept(this)
+    }
+
+    if (expectedReturnType.isDefined && !expectedReturnType.get.isInstanceOf[TypeInfo.Void.type]) {
+      // If return type of method is defined, check if last statement is return and compare types
+      val last = stmt.body.statements.lastOption
+      if (!last.isEmpty) {
+        last.get match
+          case Return(keyword, expr) =>
+            val givenReturnType = expr.accept(this)
+            if (expectedReturnType.get.coerce(givenReturnType, typeTable).isEmpty) {
+              errorExpectedType(givenReturnType, expectedReturnType.get, keyword.line)
+            }
+          case _ =>
+      }
     }
 
     endScope()
@@ -174,18 +196,7 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
     TypeInfo.Void
   }
 
-  override def visitReturn(stmt: Stmt.Return): TypeInfo = {
-    val meth = currentMethod.get
-
-    val wantedType = typeTable.getOrElse(meth.returnType, TypeInfo.Unknown)
-    val exprType = stmt.expr.accept(this)
-
-    if (wantedType.coerce(exprType, typeTable).isEmpty) {
-      errorExpectedType(exprType, wantedType, stmt.keyword.line)
-    }
-
-    TypeInfo.Void
-  }
+  override def visitReturn(stmt: Stmt.Return): TypeInfo = stmt.expr.accept(this)
 
   override def visitBinary(expr: Expr.Binary): TypeInfo = {
     val leftType = expr.left.accept(this)
@@ -274,7 +285,8 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
   }
 
   // Should not be null
-  override def visitThis(expr: Expr.This): TypeInfo = currentClass.get
+  override def visitThis(expr: Expr.This): TypeInfo =
+    typeTable.getOrElse(currentClass.get.name.lexeme, TypeInfo.Unknown)
 
   override def visitNewArray(expr: Expr.NewArray): TypeInfo = {
     val sizeType = expr.count.accept(this)
@@ -382,6 +394,18 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
     TypeInfo.Unknown
   }
 
+  private def errorReturnRequired(methodName: Token): TypeInfo = {
+    MiniJava.error(
+      methodName,
+      s"Method ${methodName.lexeme} requires return statement at end of body."
+    )
+    TypeInfo.Unknown
+  }
+
+  private def errorVariableAlreadyDefined(name: Token): Unit = {
+    MiniJava.error(name, s"Variable already named ${name.lexeme} in scope.")
+  }
+
   private def declare(name: Token): Unit = {
     if (variableScopes.isEmpty) {
       return
@@ -389,7 +413,7 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
 
     val scope = variableScopes.top // top is peek?
     if (scope.contains(name.lexeme)) {
-      typeErrors.addOne(s"Already a varible named ${name.lexeme} in scope.")
+      errorVariableAlreadyDefined(name)
     }
     scope.put(name.lexeme, None)
   }
@@ -413,19 +437,19 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
       }
     }
 
-    typeErrors.addOne(s"Could not find variable ${name.lexeme} in scope.")
+    errorVariableNotFound(name)
 
     TypeInfo.Unknown
   }
 
-  def typecheckProgram(program: Program): List[String] = {
+  def typecheckProgram(program: Program): Unit = {
+    // TODO: Sanity checks before hand
+
     for (cls <- program.classes) {
       cls.accept(this)
     }
 
     // TODO
     // program.mainClass.accept(this)
-
-    typeErrors.toList
   }
 }
