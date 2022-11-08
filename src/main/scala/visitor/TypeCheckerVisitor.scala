@@ -204,18 +204,20 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
     val op = expr.opKind
 
     op match
-      case BinaryOp.DASH | BinaryOp.PLUS | BinaryOp.MUL =>
+      // Int only operations
+      case BinaryOp.DASH | BinaryOp.PLUS | BinaryOp.MUL | BinaryOp.LESS_EQUAL | BinaryOp.LESS_THAN |
+          BinaryOp.GREATER_THAN | BinaryOp.GREATER_EQUAL =>
         val leftIsInt = leftType.coerce(TypeInfo.Int, typeTable)
         val rightIsInt = rightType.coerce(TypeInfo.Int, typeTable)
 
         if (!(leftIsInt.isDefined && rightIsInt.isDefined)) {
           errorOperatorTypesWrong(expr.op, expr.opKind, leftType, rightType)
         } else {
-          TypeInfo.Int
+          TypeInfo.Bool
         }
 
-      case BinaryOp.LESS_THAN | BinaryOp.GREATER_THAN | BinaryOp.GREATER_EQUAL |
-          BinaryOp.LESS_EQUAL | BinaryOp.AND =>
+      // Boolean only operations
+      case BinaryOp.AND =>
         val leftIsBool = leftType.coerce(TypeInfo.Bool, typeTable)
         val rightIsBool = rightType.coerce(TypeInfo.Bool, typeTable)
 
@@ -245,6 +247,7 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
     }
   }
 
+  // TODO: Finish implementing calls
   override def visitCall(expr: Expr.Call): TypeInfo = {
     val objType = expr.calle.accept(this)
 
@@ -449,7 +452,6 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
       cls.accept(this)
     }
 
-    // TODO
     // program.mainClass.accept(this)
   }
 }
