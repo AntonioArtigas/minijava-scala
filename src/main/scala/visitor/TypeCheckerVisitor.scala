@@ -33,12 +33,8 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
   private var currentMethod: Option[Stmt.Method] = None
   private var foundReturn = false
 
-  // TODO: Finish implementing
   override def visitClass(stmt: Stmt.Class): TypeInfo = {
-    // println(s"Class ${stmt.name.lexeme} extends ${stmt.parentClass.map(_.toString)}")
-
     // Has to be in there, or else we have bigger problems
-    // currentClass = typeTable.get(stmt.name.lexeme).map(_.asInstanceOf[TypeInfo.ClassType])
     currentClass = Some(stmt)
 
     beginScope()
@@ -68,7 +64,11 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
   }
 
   override def visitMainClass(stmt: Stmt.MainClass): TypeInfo = {
-    ??? // TODO: Implement
+    for (s <- stmt.body.body.statements) {
+      s.accept(this)
+    }
+
+    TypeInfo.Void
   }
 
   override def visitMethod(stmt: Stmt.Method): TypeInfo = {
@@ -110,7 +110,9 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
             if (expectedReturnType.get.coerce(givenReturnType, typeTable).isEmpty) {
               errorExpectedType(givenReturnType, expectedReturnType.get, keyword.line)
             }
-          case _ =>
+          case _ => errorReturnRequired(stmt.name, expectedReturnType.get.toString)
+      } else {
+        errorReturnRequired(stmt.name, expectedReturnType.get.toString)
       }
     }
 
@@ -344,12 +346,12 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
       argTypes: List[TypeInfo]
   ): Option[MethodDeclaration] = {
     val potentialMethods =
-      c.methods.filter(_.name.lexeme == methodName) // NOTE: Collect methods from parent?
+      c.methods.filter(_.name.lexeme == methodName)
 
     val matchingMethods = potentialMethods.filter(p => {
       val matchTypes = p.args.map(a => typeTable.get(a.typ).get)
 
-      // quick check: if at least the number of types match
+      // quick check: make sure arity matches
       if (matchTypes.length == argTypes.length) {
         val zipped = matchTypes.zip(argTypes)
         val matches = zipped.map((l, r) => l.coerce(r, typeTable).isDefined)
@@ -360,6 +362,7 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
       }
     })
 
+    // If the current class doesn't have the method, check its parent class
     matchingMethods.headOption match
       case None =>
         c.parent match
@@ -409,10 +412,10 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
     TypeInfo.Unknown
   }
 
-  private def errorReturnRequired(methodName: Token): TypeInfo = {
+  private def errorReturnRequired(methodName: Token, typ: String): TypeInfo = {
     MiniJava.error(
       methodName,
-      s"Method ${methodName.lexeme} requires return statement at end of body."
+      s"Method ${methodName.lexeme} requires return of $typ at end of body."
     )
     TypeInfo.Unknown
   }
@@ -462,6 +465,6 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
       cls.accept(this)
     }
 
-    // program.mainClass.accept(this)
+    program.mainClass.accept(this)
   }
 }
