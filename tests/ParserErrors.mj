@@ -7,8 +7,6 @@ class Main {
 class Bad {
   //int x = 2 + ; // error on ';': expect expression.
   //int y = 2 ++ 2; // error on '+': expect expression.
-  // NOTE: public must always precede a method
-  // NOTE: Maybe error in property declaration?
   public int f() {
   }
 }
