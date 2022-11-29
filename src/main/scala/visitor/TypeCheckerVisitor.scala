@@ -1,22 +1,15 @@
 package minijava
 package visitor
 
-import ast.{Expr, Program, Stmt, UnaryOp}
+import ast.Stmt.Return
+import ast.*
+import tokenizer.Token
+import visitor.TypeInfo.{Bool, ClassType, IntArray, Unknown}
 
-import scala.util.control.NonLocalReturns.*
-import scala.collection.mutable.ListBuffer
-import minijava.visitor.TypeInfo.Bool
-import minijava.visitor.TypeInfo.IntArray
-import minijava.visitor.TypeInfo.Unknown
-import minijava.visitor.TypeInfo.ClassType
-
-import scala.collection.mutable.Stack
-import scala.collection.mutable.HashMap
-import minijava.tokenizer.Token
-
+import scala.annotation.tailrec
 import scala.collection.mutable
-import minijava.ast.BinaryOp
-import minijava.ast.Stmt.Return
+import scala.collection.mutable.{HashMap, ListBuffer, Stack}
+import scala.util.control.NonLocalReturns.*
 
 /** Pass over the types listed in the type table and check statements for correct types.
   *
@@ -31,7 +24,6 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
 
   private var currentClass: Option[Stmt.Class] = None
   private var currentMethod: Option[Stmt.Method] = None
-  private var foundReturn = false
 
   override def visitClass(stmt: Stmt.Class): TypeInfo = {
     // Has to be in there, or else we have bigger problems
@@ -64,9 +56,7 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
   }
 
   override def visitMainClass(stmt: Stmt.MainClass): TypeInfo = {
-    for (s <- stmt.body.body.statements) {
-      s.accept(this)
-    }
+    stmt.body.accept(this)
 
     TypeInfo.Void
   }
@@ -80,7 +70,7 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
     // Check if types in args exist
     for (arg <- stmt.arguments) {
       val typeName = arg.typ.toString
-      if (typeTable.get(typeName).isEmpty) {
+      if (!typeTable.contains(typeName)) {
         errorTypeNotFound(typeName, arg.name.line)
       }
     }
@@ -103,7 +93,7 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
     if (expectedReturnType.isDefined && !expectedReturnType.get.isInstanceOf[TypeInfo.Void.type]) {
       // If return type of method is defined, check if last statement is return and compare types
       val last = stmt.body.statements.lastOption
-      if (!last.isEmpty) {
+      if (last.isDefined) {
         last.get match
           case Return(keyword, expr) =>
             val givenReturnType = expr.accept(this)
@@ -122,7 +112,15 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
   }
 
   override def visitMainMethod(stmt: Stmt.MainMethod): TypeInfo = {
-    ???
+    beginScope()
+
+    for (s <- stmt.body.statements) {
+      s.accept(this)
+    }
+
+    endScope()
+
+    TypeInfo.Void
   }
 
   override def visitProperty(stmt: Stmt.Property): TypeInfo = {
@@ -184,6 +182,10 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
 
   override def visitPrint(stmt: Stmt.Print): TypeInfo = {
     val exprType = stmt.expression.accept(this)
+
+    if (!exprType.isInstanceOf[TypeInfo.Int.type]) {
+      errorExpectedType(exprType, TypeInfo.Int, stmt.start.line)
+    }
 
     TypeInfo.Void
   }
@@ -268,7 +270,9 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
 
         val matchedMethod = getMatchingMethod(c, expr.name.lexeme, argTypes)
         if (matchedMethod.isDefined) {
-          typeTable.get(matchedMethod.get.returnType).get
+          expr.method = matchedMethod
+          expr.clsName = Some(c.name.lexeme)
+          typeTable(matchedMethod.get.returnType)
         } else {
           TypeInfo.Unknown
         }
@@ -340,6 +344,7 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
 
   override def visitGrouping(expr: Expr.Grouping): TypeInfo = expr.inner.accept(this)
 
+  @tailrec
   private def getMatchingMethod(
       c: TypeInfo.ClassType,
       methodName: String,
@@ -349,7 +354,7 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
       c.methods.filter(_.name.lexeme == methodName)
 
     val matchingMethods = potentialMethods.filter(p => {
-      val matchTypes = p.args.map(a => typeTable.get(a.typ).get)
+      val matchTypes = p.args.map(a => typeTable(a.typ))
 
       // quick check: make sure arity matches
       if (matchTypes.length == argTypes.length) {
@@ -368,7 +373,7 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
         c.parent match
           case Some(value) =>
             getMatchingMethod(
-              typeTable.get(value).get.asInstanceOf[TypeInfo.ClassType],
+              typeTable(value).asInstanceOf[TypeInfo.ClassType],
               methodName,
               argTypes
             )
@@ -441,17 +446,17 @@ class TypeCheckerVisitor(val typeTable: Map[String, TypeInfo])
       return
     }
 
-    val scope = variableScopes.top.put(name.lexeme, Some(typ))
+    variableScopes.top.put(name.lexeme, Some(typ))
   }
 
-  private def beginScope(): Unit = variableScopes.push(HashMap())
+  private def beginScope(): Unit = variableScopes.push(mutable.HashMap())
 
   private def endScope(): Unit = variableScopes.pop()
 
   private def resolveLocal(name: Token): TypeInfo = returning {
     for (layer <- variableScopes) {
       if (layer.contains(name.lexeme)) {
-        throwReturn(layer.get(name.lexeme).get.get)
+        throwReturn(layer(name.lexeme).get)
       }
     }
 
