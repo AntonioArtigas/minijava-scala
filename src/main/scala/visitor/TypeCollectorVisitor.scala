@@ -1,17 +1,12 @@
 package minijava
 package visitor
 
-import ast.{Program, Stmt, Type}
-import visitor.TypeInfo.ClassType
+import ast.{Expr, Program, Stmt, Type}
+import tokenizer.Token
+import visitor.TypeInfo.{Bool, ClassType, IntArray, Unknown}
 
-import minijava.tokenizer.Token
-
-import scala.collection.immutable
-import scala.collection.mutable
-import minijava.ast.Expr
-import minijava.visitor.TypeInfo.Bool
-import minijava.visitor.TypeInfo.IntArray
-import minijava.visitor.TypeInfo.Unknown
+import scala.annotation.tailrec
+import scala.collection.{immutable, mutable}
 
 sealed trait TypeInfo {
   def coerce(other: TypeInfo, typeTable: Map[String, TypeInfo]): Option[TypeInfo] = {
@@ -31,7 +26,7 @@ sealed trait TypeInfo {
       case c: ClassType =>
         c.parent match
           case Some(value) =>
-            val parentType = typeTable.get(value).get
+            val parentType = typeTable(value)
             return parentType.coerce(other, typeTable)
           case None =>
 
@@ -42,21 +37,21 @@ sealed trait TypeInfo {
 
   def isPrimitive: Boolean = {
     this match
-      case TypeInfo.Bool                                         => true
-      case TypeInfo.Int                                          => true
-      case TypeInfo.IntArray                                     => true
-      case TypeInfo.Void                                         => true
-      case TypeInfo.Unknown                                      => false
-      case TypeInfo.ClassType(name, parent, properties, methods) => false
+      case TypeInfo.Bool         => true
+      case TypeInfo.Int          => true
+      case TypeInfo.IntArray     => true
+      case TypeInfo.Void         => true
+      case TypeInfo.Unknown      => false
+      case _: TypeInfo.ClassType => false
   }
 
-  override def toString(): String = this match
-    case TypeInfo.Bool => "boolean"
-    case TypeInfo.Int => "int"
-    case TypeInfo.IntArray => "int[]"
-    case TypeInfo.Void => "void"
-    case TypeInfo.Unknown => "unknown"
-    case TypeInfo.ClassType(name, parent, properties, methods) => name.lexeme
+  override def toString: String = this match
+    case TypeInfo.Bool                     => "boolean"
+    case TypeInfo.Int                      => "int"
+    case TypeInfo.IntArray                 => "int[]"
+    case TypeInfo.Void                     => "void"
+    case TypeInfo.Unknown                  => "unknown"
+    case TypeInfo.ClassType(name, _, _, _) => name.lexeme
 
 }
 
@@ -176,6 +171,7 @@ class TypeCollectorVisitor extends Stmt.Visitor[Unit] with Expr.Visitor[Unit] {
     typeTable.put(clsName, classType)
   }
 
+  @tailrec
   private def circularityCheck(
       start: TypeInfo.ClassType,
       c: TypeInfo.ClassType,
