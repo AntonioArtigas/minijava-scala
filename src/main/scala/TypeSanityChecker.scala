@@ -1,7 +1,6 @@
 package minijava
 
-import minijava.visitor.TypeInfo
-import minijava.visitor.MethodDeclaration
+import visitor.{MethodDeclaration, TypeInfo}
 
 /** Simple checks on types to prevent edge cases. More complicated things like seeing if variables
   * use undeclared types is done in the TypeCheckerVisitor
@@ -10,7 +9,7 @@ import minijava.visitor.MethodDeclaration
   *   Type table to check through
   */
 class TypeSanityChecker(val typeTable: Map[String, TypeInfo]) {
-  def checkForDuplicateMethods: Unit = {
+  def checkForDuplicateMethods(): Unit = {
     for (typ <- typeTable.values) {
       typ match
         case cls: TypeInfo.ClassType =>
@@ -31,13 +30,13 @@ class TypeSanityChecker(val typeTable: Map[String, TypeInfo]) {
   def getAllMethods(cls: TypeInfo.ClassType): List[(MethodDeclaration, Boolean)] = {
     cls.parent match
       case None => cls.methods.map((_, false))
-      case Some(value) =>
+      case Some(p) =>
         cls.methods.map((_, false)) ++ getAllMethods(
-          typeTable.get(cls.name.lexeme).get.asInstanceOf[TypeInfo.ClassType]
+          typeTable(p).asInstanceOf[TypeInfo.ClassType]
         ).map(p => (p._1, true))
   }
 
-  def checkForBadMethodOverloading: Unit = {
+  def checkForBadMethodOverloading(): Unit = {
     for (typ <- typeTable.values) {
       typ match
         case cls: TypeInfo.ClassType =>
@@ -46,13 +45,13 @@ class TypeSanityChecker(val typeTable: Map[String, TypeInfo]) {
           classMethods
             .groupBy(_._1.name.lexeme)
             .foreach(methGroup => {
-              val name = methGroup._1
+//              val name = methGroup._1
               val methods = methGroup._2
 
               methods
                 .groupBy(_._1.args.map(_.typ))
                 .foreach(pm => {
-                  val parameterTypes = pm._1
+//                  val parameterTypes = pm._1
                   val methodMatches = pm._2
 
                   val childMatches = methodMatches.filter(_._2 == false).map(_._1)
@@ -62,10 +61,8 @@ class TypeSanityChecker(val typeTable: Map[String, TypeInfo]) {
                   // child class methods
                   val parentNonCovariant = parentMatches.filter(p => {
                     childMatches.exists(c =>
-                      typeTable
-                        .get(c.returnType)
-                        .get
-                        .coerce(typeTable.get(p.returnType).get, typeTable)
+                      typeTable(c.returnType)
+                        .coerce(typeTable(p.returnType), typeTable)
                         .isEmpty
                     )
                   })
@@ -91,13 +88,13 @@ class TypeSanityChecker(val typeTable: Map[String, TypeInfo]) {
     }
   }
 
-  def checkTypeTable: Unit = {
-    checkForDuplicateMethods
+  def checkTypeTable(): Unit = {
+    checkForDuplicateMethods()
 
     if (MiniJava.hadError) {
       return
     }
 
-    checkForBadMethodOverloading
+    checkForBadMethodOverloading()
   }
 }
