@@ -1,0 +1,25 @@
+class Main {
+    public static void main(String[] args) {
+
+    }
+}
+
+class A {
+    public int foo() {
+        return 1;
+    }
+
+    public A quux() {
+        return this;
+    }
+}
+
+class B extends A {
+    public B foo() {
+        return this;
+    }
+
+    public int bar() {
+        return this.foo();
+    }
+}

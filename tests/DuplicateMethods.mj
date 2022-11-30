@@ -1,0 +1,13 @@
+class Main {
+    public static void main(String[] args) {
+
+    }
+}
+
+class DuplicateMethods {
+    public void foo() {}
+    public void foo() {}
+
+    public int bar() { return 1; }
+    public DuplicateMethods bar() { return this; }
+}

@@ -1,0 +1,36 @@
+class TypeError {
+    public static void main(String[] args) {
+
+    }
+}
+
+class Whoops {
+    // Return statement should have type Whoops, not int
+    public Whoops thisIsAllowed() {
+        return 1;
+    }
+
+    // BadType never declared/defined
+    public BadType typeNoExist() {
+    }
+
+    public int needToReturn() {
+
+    }
+
+    // Duplicate local variables
+    public void duplicateLocalVariables() {
+        int num_aux ;
+        boolean num_aux ;
+        int num_aux ;
+    }
+
+    // error on duplicate method decls
+    public void foo() {}
+    public void foo() {}
+}
+
+// error on extending non-existent class
+class WhatIf extends ThisDoesntExist {
+
+}

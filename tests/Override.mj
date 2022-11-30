@@ -1,0 +1,32 @@
+class Override {
+    public static io void main(String[] a){
+        System.out.println(new Runner().run());
+    }
+}
+
+class Runner {
+    public io int run() {
+        A a;
+        A b;
+
+        a = new A();
+        b = new B();
+
+        System.out.println(a.go());
+        System.out.println(b.go());
+
+        return 0;
+    }
+}
+
+class A {
+    public int go() {
+        return 1;
+    }
+}
+
+class B extends A {
+    public int go() {
+        return 2;
+    }
+}
