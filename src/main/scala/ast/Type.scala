@@ -13,6 +13,13 @@ sealed trait Type {
     case Type.IntArray     => "int[]"
     case Type.Bool         => "boolean"
     case Type.Custom(name) => name
+
+  def toTypeDescriptor: String = this match
+    case Type.Int => "I"
+    case Type.IntArray => "[I"
+    case Type.Bool => "Z"
+    case Type.Custom(name) => s"L$name;"
+
 }
 
 /** Represents a type within the AST
