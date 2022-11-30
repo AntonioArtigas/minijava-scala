@@ -3,6 +3,8 @@ package ast
 
 import tokenizer.Token
 
+import visitor.MethodDeclaration
+
 /** Things that produce values of use
   */
 sealed abstract class Expr {
@@ -41,7 +43,8 @@ object Expr {
   }
 
   // foo.bar(<args>)
-  case class Call(calle: Expr, name: Token, args: List[Expr] = List.empty) extends Expr {
+  // FIXME: A hack to keep track which method this call refers to. Added during typecheck phase
+  case class Call(calle: Expr, name: Token, args: List[Expr] = List.empty, var method: Option[MethodDeclaration] = None, var clsName: Option[String] = None) extends Expr {
     override def accept[R](visitor: Visitor[R]): R = visitor.visitCall(this)
   }
 
@@ -51,10 +54,6 @@ object Expr {
   }
   case class Bool(literal: Token, value: Boolean) extends Expr {
     override def accept[R](visitor: Visitor[R]): R = visitor.visitBool(this)
-  }
-  // bonus: "foo"?
-  case class String(literal: Token, value: String) extends Expr {
-    override def accept[R](visitor: Visitor[R]): R = ???
   }
 
   // let foo = ...;

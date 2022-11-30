@@ -253,10 +253,9 @@ class ParserV1(val tokens: List[Token]) extends Parser {
     consume(TokenType.RIGHT_BRACE, "Expect '}' after main class body.")
 
     body match {
-      case Stmt.Block(_) => {
-        mainMethod = Stmt.MainMethod(argName, body.asInstanceOf[Stmt.Block])
+      case block: Stmt.Block =>
+        mainMethod = Stmt.MainMethod(argName, block)
         Stmt.MainClass(name, mainMethod)
-      }
 
       case _ => throw error(peek(), "Expected block after main method declaration.")
     }
